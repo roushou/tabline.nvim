@@ -332,3 +332,27 @@ test("queued redraws are harmless after disable and setup", function()
 	vim.wait(20)
 	h.ok(evaluate(vim.o.tabline):find("queued", 1, true))
 end)
+
+test("setup supports Neovim without BufModifiedSet", function()
+	local exists, create = vim.fn.exists, vim.api.nvim_create_autocmd
+	vim.fn.exists = function(name)
+		return name == "##BufModifiedSet" and 0 or exists(name)
+	end
+	vim.api.nvim_create_autocmd = function(events, opts)
+		local names = type(events) == "table" and events or { events }
+		for _, event in ipairs(names) do
+			if event == "BufModifiedSet" then
+				error("Invalid 'event': 'BufModifiedSet'")
+			end
+		end
+		return create(events, opts)
+	end
+	local ok, err = pcall(tabline.setup)
+	vim.fn.exists, vim.api.nvim_create_autocmd = exists, create
+	h.ok(ok, err)
+	local watches_modified = false
+	for _, autocmd in ipairs(vim.api.nvim_get_autocmds({ group = "TablineNvim", event = "OptionSet" })) do
+		watches_modified = watches_modified or autocmd.pattern == "modified"
+	end
+	h.ok(watches_modified, "modified changes still need a redraw handler")
+end)

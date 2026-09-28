@@ -158,18 +158,23 @@ function M.setup(opts)
 		end,
 		desc = "Restore tabline highlight defaults",
 	})
-	vim.api.nvim_create_autocmd({
+	local events = {
 		"BufAdd",
 		"BufDelete",
 		"BufEnter",
 		"BufWipeout",
 		"BufFilePost",
-		"BufModifiedSet",
 		"FileType",
 		"VimResized",
 		"TabEnter",
 		"WinEnter",
-	}, { group = group, callback = redraw, desc = "Refresh buffer tabline" })
+	}
+	-- Newer Neovim uses OptionSet(modified) for implicit changes too.
+	-- Older releases still need BufModifiedSet for edits and writes.
+	if vim.fn.exists("##BufModifiedSet") == 1 then
+		events[#events + 1] = "BufModifiedSet"
+	end
+	vim.api.nvim_create_autocmd(events, { group = group, callback = redraw, desc = "Refresh buffer tabline" })
 	vim.api.nvim_create_autocmd("OptionSet", {
 		group = group,
 		pattern = { "buflisted", "modified", "ambiwidth" },
