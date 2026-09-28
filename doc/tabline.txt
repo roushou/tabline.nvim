@@ -1,0 +1,116 @@
+*tabline.txt*                   Buffer tabline for Neovim 0.10+
+
+==============================================================================
+INTRODUCTION                                                    *tabline.nvim*
+
+A clickable line of listed buffers, ordered by buffer number. The current
+buffer has a filled accent; modified buffers have a marker. Labels fit the
+available display width. Duplicate filenames gain distinguishing parent paths.
+
+Requires Neovim 0.10+. No required dependencies. Optional icon providers:
+mini.icons (preferred), nvim-web-devicons, or a callback.
+
+Load the plugin on 'runtimepath', then enable it explicitly: >lua
+    require("tabline").setup()
+<
+Requiring the module alone has no side effects. No mappings, global Lua
+variables, Vimscript functions, or 'mouse' changes are installed.
+
+==============================================================================
+CONFIGURATION                                           *tabline-configuration*
+
+Each setup call merges options over fresh defaults: >lua
+    require("tabline").setup({
+      max_visible = 15,
+      max_name_length = 32,
+      padding = 2,
+      icons = true,
+      modified = " ●",
+      separator = "▍",
+      overflow = "…",
+      showtabline = 2,
+    })
+<
+max_visible       Maximum visible buffers, integer 1..10000. Screen width can
+                  reduce the number further; the current buffer stays visible.
+max_name_length   Maximum filename display width, integer 1..10000. Truncated
+                  names end in an ellipsis. Truncation can hide distinguishing
+                  parent paths of duplicate filenames.
+padding           Spaces around a label, integer 0..10000.
+icons             true: try mini.icons, then nvim-web-devicons. false: no icons.
+                  A function(bufnr) may return a plain-text string or nil.
+                  Errors or invalid results omit the icon. Callbacks run during
+                  rendering and must be fast and free of editor side effects.
+modified          Plain-text modified marker, including any leading space.
+separator         Plain-text tail on the active label.
+overflow          Plain-text indicator for hidden buffers, or "" to hide it.
+showtabline       Set 'showtabline' to 0, 1, or 2. false preserves the option.
+                  Value 1 follows tab-page count, not buffer count.
+
+Text options must not contain control characters. Unknown options and invalid
+values raise an error without disturbing an existing setup. There is no buffer
+cache; late icon providers, renames, and changed buffer state appear on redraw.
+
+When only one label fits, padding, icons, and the active tail may be omitted.
+The filename is truncated, keeping the modified marker when space permits.
+An unlisted current buffer selects no label and shows the start of the list.
+External GUI tablines may replace Neovim's rendered tabline.
+
+==============================================================================
+API                                                             *tabline-api*
+
+setup({opts})                                               *tabline.setup()*
+    Configure and enable. Idempotent: repeated calls replace the autocmd group
+    and configuration. The original option values are retained for disable().
+    Accepts the options listed in |tabline-configuration|.
+
+disable()                                                 *tabline.disable()*
+    Remove autocmds and cancel queued redraws. Restore 'tabline' and
+    'showtabline' only if their values still match those set by this plugin.
+    Leaves highlight groups, mouse settings, and keymaps alone. Safe to repeat.
+
+cycle({direction})                                          *tabline.cycle()*
+    Move by a finite integer offset through listed buffers with wraparound.
+    Zero is a no-op. From an unlisted buffer, a positive offset selects the
+    first listed buffer; a negative offset selects the last. With no listed
+    buffers, does nothing. Failed switches warn through |vim.notify()|.
+
+render()                                                   *tabline.render()*
+    Return a tabline format string for the current buffer and 'columns'. Safe
+    before setup(). Intended for Neovim's tabline expression evaluation.
+
+click({bufnr}, {clicks}, {button}, {modifiers})                *tabline.click()*
+    Native tabline click callback. Left button ("l") switches buffer. Middle
+    button ("m") deletes an unmodified listed buffer with |nvim_buf_delete()|.
+    Modified buffers are never force-deleted. Deletion follows Neovim's normal
+    window behavior. Invalid/unlisted buffers and other buttons are ignored.
+    The click count and modifiers are currently ignored. Errors warn through
+    |vim.notify()|. Mouse support requires a suitable 'mouse' setting.
+
+Example mappings (none are installed automatically): >lua
+    vim.keymap.set("n", "H", function() require("tabline").cycle(-1) end)
+    vim.keymap.set("n", "L", function() require("tabline").cycle(1) end)
+<
+==============================================================================
+HIGHLIGHTS                                               *tabline-highlights*
+
+TablineActive       Foreground derived from StatusLine / Normal background;
+                    background derived from Directory / Function foreground;
+                    bold. Fallback colors: #16161d and #7e9cd8.
+TablineActiveTail   Accent foreground.
+TablineOverflow     Default link to Comment.
+TabLine            Existing colorscheme group for inactive labels.
+TabLineFill        Existing colorscheme group for unused space.
+
+Defaults resolve linked groups, refresh on ColorScheme, and preserve explicit
+user overrides. Define overrides after loading your colorscheme or from a
+ColorScheme autocmd. Highlight groups remain defined after disable().
+
+==============================================================================
+TROUBLESHOOTING                                             *tabline-health*
+
+Run :checkhealth tabline. If labels are hidden, check 'showtabline' and whether
+another plugin owns 'tabline'. If clicks do nothing, check 'mouse'. Optional
+icons may need a Nerd Font. No icons are shown without a provider.
+
+vim:tw=78:ts=8:noet:ft=help:norl:
